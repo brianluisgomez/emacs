@@ -1,7 +1,5 @@
 (setq inhibit-startup-message t)
-
-(scroll-bar-mode -1)     ; Disable visibile scrollbar
-(tool-bar-mode -1)       ; Disable the toolbar
+oolbar
 (tooltip-mode -1)        ; Disable tooltips
 (set-fringe-mode 10)     ; Give some breathing room?
 
@@ -35,7 +33,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(company tide typescript-mode flycheck evil-magit counsel-projectile projectile hydra evil-collection evil general doom-themes helpful ivy-rich which-key rainbow-delimiters magit doom-modeline counsel ivy use-package)))
+   '(prettier-js pyvenv python-mode company-box dap-mode lsp-ivy lsp-ui lsp-mode company flycheck evil-magit counsel-projectile projectile hydra evil-collection evil general doom-themes helpful ivy-rich which-key rainbow-delimiters magit doom-modeline counsel ivy use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -45,11 +43,12 @@
  '(mode-line-inactive ((t (:height 0.85)))))
 
 (column-number-mode)
-global-display-line-numbers-mode t)
+(global-display-line-numbers-mode t)
 
 ;;Disable line numbers for some modes
 (dolist (mode '(org-mode-hok
 		term-mode-hook
+		treemacs-mode-hook
 		eshell-mode-hook))
   (add-hook mode (lambda () (display-line-numbers mode 0))))
 
@@ -95,7 +94,7 @@ global-display-line-numbers-mode t)
   ([remap describe-command] . helpful-command)
   ([remap describe-variable] . counsel-describe-variable)
   ([remap describe-key] . helpful-key))
-  
+
 
 
 
@@ -150,7 +149,7 @@ global-display-line-numbers-mode t)
   :after evil
   :config
   (evil-collection-init))
-  
+
 (use-package hydra)
 
 (defhydra hydra-text-scale (:timeout 4)
@@ -169,21 +168,22 @@ global-display-line-numbers-mode t)
   :bind-keymap
   ("C-c p" . projectile-command-map)
   :init
-  (when (file-directory-p "C:\Users\bgomez\Desktop\Playground")
-    (setq projectile-project-search-path '("C:\Users\bgomez\Desktop\Playground~/Projects/Code")))
-
+  (when (file-directory-p "~/Projects/Code")
+    (setq projectile-project-search-path '("~/Projects/Code")))
+  (setq projective-switch-project-action #'projectile-dired))
 
 (use-package counsel-projectile
   :config (counsel-projectile-mode))
 
 (use-package magit
-  :ensure t)
+  :commands magit-status
+  :custom
+  (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
 
 (use-package forge
   :after magit)
 
 (setq auth-sources '("~/.authinfo"))
-
 
 ;; json-mode
 (use-package json-mode
@@ -202,16 +202,19 @@ global-display-line-numbers-mode t)
 	 ("\\.html\\'" . web-mode))
   :commands web-mode)
 
-
-
-(use-package flycheck
-  :ensure t)
-
-(setq company-minimum-prefix-length 1
-      company-idle-delay 0.0)
 (use-package company
-  :ensure t
-  :config (global-company-mode t))
+  :after lsp-mode
+  :hook (lsp-mode . company-mode)
+  :bind (:map company-active-map
+         ("<tab>" . company-complete-selection))
+        (:map lsp-mode-map
+         ("<tab>" . company-indent-or-complete-common))
+  :custom
+  (company-minimum-prefix-length 1)
+  (company-idle-delay 0.0))
+
+(use-package company-box
+  :hook (company-mode . company-box-mode))
 
 ;; lsp-mode (This section is not working)
 (setq lsp-log-io nil) ;; Don't log everything = speed
@@ -222,17 +225,22 @@ global-display-line-numbers-mode t)
 (setq lsp-ui-sideline-show-code-actions t)
 
 (use-package lsp-mode
-  :ensure t
-  :hook (
-	 (web-mode . lsp-deferred)
-	 (lsp-mode . lsp-enable-which-key-integration)
-	 )
-  :commands lsp-deferred)
+  :commands (lsp lsp-deferred)
+  :init
+  (setq lsp-keymap-prefix "C-c l")  ;; Or 'C-l', 's-l'
+  :config
+  (lsp-enable-which-key-integration t))
 
 
 (use-package lsp-ui
   :ensure t
   :commands lsp-ui-mode)
+
+(use-package lsp-treemacs
+  :after lsp)
+
+(use-package lsp-ivy
+  :after lsp)
 
 (use-package prettier-js
   :ensure t)
@@ -241,22 +249,40 @@ global-display-line-numbers-mode t)
                               '("\\.jsx?\\'" . prettier-js-mode))
 			     (enable-minor-mode
                               '("\\.tsx?\\'" . prettier-js-mode))))
-  (setq projective-switch-project-action #'projectile-dired))
 
-(use-package counsel-projectile
-  :config (counsel-projectile-mode))
+(use-package dap-mode
+  ;; Uncomment the config below if you want all UI panes to be hidden by default!
+  ;; :custom
+  ;; (lsp-enable-dap-auto-configure nil)
+  ;; :config
+  ;; (dap-ui-mode 1)
+  :commands dap-debug
+  :config
+  ;; Set up Node debugging
+  (require 'dap-node)
+  (dap-node-setup) ;; Automatically installs Node debug adapter if needed
 
-(use-package magit
-  :ensure t)
+  ;; Bind `C-c l d` to `dap-hydra` for easy access
+  (general-define-key
+    :keymaps 'lsp-mode-map
+    :prefix lsp-keymap-prefix
+    "d" '(dap-hydra t :wk "debugger")))
 
-(use-package forge
-  :after magit)
+(use-package python-mode
+  :ensure t
+  :hook (python-mode . lsp-deferred)
+  :custom
+  ;; NOTE: Set these if Python 3 is called "python3" on your system!
+  (python-shell-interpreter "python3")
+  (dap-python-executable "python3")
+  (dap-python-debugger 'debugpy)
+  :config
+  (require 'dap-python))
 
-(setq auth-sources '("~/.authinfo"))
+(use-package pyvenv
+  :after python-mode
+  :config
+  (pyvenv-mode 1))
 
-(use-package flycheck
-  :ensure t)
 
-(use-package company
-  :ensure t)
 
