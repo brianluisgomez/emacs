@@ -169,8 +169,78 @@ global-display-line-numbers-mode t)
   :bind-keymap
   ("C-c p" . projectile-command-map)
   :init
-  (when (file-directory-p "~/Projects/Code")
-    (setq projectile-project-search-path '("~/Projects/Code")))
+  (when (file-directory-p "C:\Users\bgomez\Desktop\Playground")
+    (setq projectile-project-search-path '("C:\Users\bgomez\Desktop\Playground~/Projects/Code")))
+
+
+(use-package counsel-projectile
+  :config (counsel-projectile-mode))
+
+(use-package magit
+  :ensure t)
+
+(use-package forge
+  :after magit)
+
+(setq auth-sources '("~/.authinfo"))
+
+
+;; json-mode
+(use-package json-mode
+  :ensure t)
+
+;; web-mode
+(setq web-mode-markup-indent-offset 2)
+(setq web-mode-code-indent-offset 2)
+(setq web-mode-css-indent-offset 2)
+(use-package web-mode
+  :ensure t
+  :mode (("\\.js\\'" . web-mode)
+	 ("\\.jsx\\'" .  web-mode)
+	 ("\\.ts\\'" . web-mode)
+	 ("\\.tsx\\'" . web-mode)
+	 ("\\.html\\'" . web-mode))
+  :commands web-mode)
+
+
+
+(use-package flycheck
+  :ensure t)
+
+(setq company-minimum-prefix-length 1
+      company-idle-delay 0.0)
+(use-package company
+  :ensure t
+  :config (global-company-mode t))
+
+;; lsp-mode (This section is not working)
+(setq lsp-log-io nil) ;; Don't log everything = speed
+(setq lsp-keymap-prefix "C-c l")
+(setq lsp-restart 'auto-restart)
+(setq lsp-ui-sideline-show-diagnostics t)
+(setq lsp-ui-sideline-show-hover t)
+(setq lsp-ui-sideline-show-code-actions t)
+
+(use-package lsp-mode
+  :ensure t
+  :hook (
+	 (web-mode . lsp-deferred)
+	 (lsp-mode . lsp-enable-which-key-integration)
+	 )
+  :commands lsp-deferred)
+
+
+(use-package lsp-ui
+  :ensure t
+  :commands lsp-ui-mode)
+
+(use-package prettier-js
+  :ensure t)
+(add-hook 'web-mode-hook #'(lambda ()
+                             (enable-minor-mode
+                              '("\\.jsx?\\'" . prettier-js-mode))
+			     (enable-minor-mode
+                              '("\\.tsx?\\'" . prettier-js-mode))))
   (setq projective-switch-project-action #'projectile-dired))
 
 (use-package counsel-projectile
