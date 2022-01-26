@@ -1,5 +1,7 @@
 (setq inhibit-startup-message t)
-oolbar
+
+(scroll-bar-mode -1)
+(tool-bar-mode -1)
 (tooltip-mode -1)        ; Disable tooltips
 (set-fringe-mode 10)     ; Give some breathing room?
 
@@ -33,7 +35,7 @@ oolbar
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(prettier-js pyvenv python-mode company-box dap-mode lsp-ivy lsp-ui lsp-mode company flycheck evil-magit counsel-projectile projectile hydra evil-collection evil general doom-themes helpful ivy-rich which-key rainbow-delimiters magit doom-modeline counsel ivy use-package)))
+   '(visual-fill-column org-bullets dap-java all-the-icons-dired emojify lsp-java yasnippet prettier-js pyvenv python-mode company-box dap-mode lsp-ivy lsp-ui lsp-mode company flycheck evil-magit counsel-projectile projectile hydra evil-collection evil general doom-themes helpful ivy-rich which-key rainbow-delimiters magit doom-modeline counsel ivy use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -46,11 +48,11 @@ oolbar
 (global-display-line-numbers-mode t)
 
 ;;Disable line numbers for some modes
-(dolist (mode '(org-mode-hok
+(dolist (mode '(org-mode-hook
 		term-mode-hook
 		treemacs-mode-hook
 		eshell-mode-hook))
-  (add-hook mode (lambda () (display-line-numbers mode 0))))
+  (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
 (require 'emacsql)
 (use-package ivy
@@ -189,6 +191,13 @@ oolbar
 (use-package json-mode
   :ensure t)
 
+(use-package flycheck
+  :config
+  (setq-default flycheck-indication-mode 'right-margin)
+  (add-hook 'flycheck-mode-hook #'flycheck-set-indication-mode))
+
+(use-package yasnippet :config (yas-global-mode))
+
 ;; web-mode
 (setq web-mode-markup-indent-offset 2)
 (setq web-mode-code-indent-offset 2)
@@ -242,6 +251,11 @@ oolbar
 (use-package lsp-ivy
   :after lsp)
 
+(use-package lsp-java
+  :after lsp
+  :config
+  (define-key java-mode-map (kbd "C-c i") #'lsp-java-add-import))
+
 (use-package prettier-js
   :ensure t)
 (add-hook 'web-mode-hook #'(lambda ()
@@ -268,6 +282,12 @@ oolbar
     :prefix lsp-keymap-prefix
     "d" '(dap-hydra t :wk "debugger")))
 
+(use-package typescript-mode
+  :mode "\\.ts\\'"
+  :hook (typescript-mode . lsp-deferred)
+  :config
+  (setq typescript-indent-level 2))
+
 (use-package python-mode
   :ensure t
   :hook (python-mode . lsp-deferred)
@@ -279,10 +299,75 @@ oolbar
   :config
   (require 'dap-python))
 
+
 (use-package pyvenv
   :after python-mode
   :config
   (pyvenv-mode 1))
 
 
+(use-package emojify
+  :config
+  (when (member "Segoe UI Emoji" (font-family-list))
+    (set-fontset-font
+     t 'symbol (font-spec :family "Segoe UI Emoji") nil 'prepend))
+  (setq emojify-display-style 'unicode)
+  (setq emojify-emoji-styles '(unicode))
+  (bind-key* (kbd "C-c .") #'emojify-insert-emoji))
 
+(use-package treemacs
+  :ensure t)
+
+(defun efs/org-mode-setup ()
+  (org-indent-mode)
+  (variable-pitch-mode 1)
+  (visual-line-mode 1))
+
+;; Org Mode Configuration ------------------------------------------------------
+
+(defun efs/org-font-setup ()
+  ;; Replace list hyphen with dot
+  (font-lock-add-keywords 'org-mode
+                          '(("^ *\\([-]\\) "
+                             (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
+
+  ;; Set faces for heading levels
+  (dolist (face '((org-level-1 . 1.2)
+                  (org-level-2 . 1.1)
+                  (org-level-3 . 1.05)
+                  (org-level-4 . 1.0)
+                  (org-level-5 . 1.1)
+                  (org-level-6 . 1.1)
+                  (org-level-7 . 1.1)
+                  (org-level-8 . 1.1)))
+    (set-face-attribute (car face) nil :font "Cantarell" :weight 'regular :height (cdr face)))
+
+  ;; Ensure that anything that should be fixed-pitch in Org files appears that way
+  (set-face-attribute 'org-block nil :foreground nil :inherit 'fixed-pitch)
+  (set-face-attribute 'org-code nil   :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-table nil   :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-verbatim nil :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-meta-line nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch))
+
+(use-package org
+  :hook (org-mode . efs/org-mode-setup)
+  :config
+  (setq org-ellipsis " ▾"
+	org-hide-emphasis-markers t)
+  (efs/org-font-setup))
+
+(use-package org-bullets
+  :after org
+  :hook (org-mode . org-bullets-mode)
+  :custom
+  (org-bullets-bullet-list '("◉" "○" "●" "○" "●" "○" "●")))
+
+(defun efs/org-mode-visual-fill ()
+  (setq visual-fill-column-width 100
+        visual-fill-column-center-text t)
+  (visual-fill-column-mode 1))
+
+(use-package visual-fill-column
+  :hook (org-mode . efs/org-mode-visual-fill))
